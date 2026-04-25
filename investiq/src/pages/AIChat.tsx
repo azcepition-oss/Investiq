@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles, Loader2, User, Bot, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import Markdown from "react-markdown";
-import { chatWithAI } from "../services/api";
+import { chatWithAI, getAiCreditStatus } from "../services/api";
 import { cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 
@@ -12,6 +12,11 @@ interface Message {
 }
 
 const getErrorMessage = (error: any) => {
+  const localCode = error?.code || error?.message;
+  if (localCode === "DAILY_AI_LIMIT_REACHED") {
+    return "You’ve used all 10 AI mentor credits for today on this device. Come back tomorrow for a fresh reset.";
+  }
+
   const apiError = error?.response?.data?.error;
   const apiDetails = error?.response?.data?.details || "";
   const message = `${apiError || ""} ${apiDetails}`.trim();
@@ -33,10 +38,11 @@ const getErrorMessage = (error: any) => {
 
 export const AIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "Yo! I'm your Market Mentor. Want to know the real-time price of a stock or why the market is acting up? Ask away!" }
+    { role: 'assistant', content: "Hey — I’m your Market Mentor. Ask me a specific question about a stock, a market move, or a finance concept and I’ll break it down clearly." }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [creditStatus, setCreditStatus] = useState(getAiCreditStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -47,6 +53,8 @@ export const AIChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const refreshCredits = () => setCreditStatus(getAiCreditStatus());
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -63,6 +71,7 @@ export const AIChat = () => {
       console.error(error);
       setMessages(prev => [...prev, { role: 'assistant', content: getErrorMessage(error) }]);
     } finally {
+      refreshCredits();
       setIsLoading(false);
     }
   };
@@ -73,11 +82,22 @@ export const AIChat = () => {
         <button onClick={() => navigate(-1)} className="p-2 text-zinc-400 hover:text-white transition-colors">
           <ArrowLeft size={20} />
         </button>
-        <div className="flex items-center gap-2 text-emerald-400">
-          <Sparkles size={20} />
-          <h1 className="font-black uppercase tracking-widest text-sm">Market Mentor AI</h1>
+        <div className="flex items-center justify-between w-full gap-4">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <Sparkles size={20} />
+            <h1 className="font-black uppercase tracking-widest text-sm">Market Mentor AI</h1>
+          </div>
+          <div className="px-3 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-[10px] font-black uppercase tracking-widest text-emerald-400 whitespace-nowrap">
+            {creditStatus.remaining}/{creditStatus.limit} today
+          </div>
         </div>
       </header>
+
+      <div className="px-4 pt-3">
+        <p className="text-[11px] text-zinc-500 font-medium">
+          10 AI credits per day on this device. Ask specific questions like “Why is NVDA up today?” or “Explain options in simple terms.”
+        </p>
+      </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
         {messages.map((msg, i) => (
@@ -133,15 +153,15 @@ export const AIChat = () => {
         <div className="relative max-w-4xl mx-auto">
           <input
             type="text"
-            placeholder="Ask about AAPL price, market trends, or jargon..."
+            placeholder="Ask a specific investing question..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="wfull bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || creditStatus.remaining <= 0}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-emerald-500 text-black rounded-xl hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all"
           >
             <Send size={20} />
