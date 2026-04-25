@@ -4,6 +4,7 @@ import { Newspaper, Sparkles, Loader2, TrendingUp, TrendingDown, ArrowRight } fr
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
 
+
 export const BreakingNews = () => {
   const [news, setNews] = useState<{ title: string; summary: string; sentiment: 'up' | 'down' | 'neutral' }[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -13,13 +14,13 @@ export const BreakingNews = () => {
       try {
         setNews([
           { title: "Fed Holds Rates", summary: "Market neutral as the Fed keeps rates steady to fight sticky inflation.", sentiment: 'neutral' },
-          { title: "AI Infrastructure Boom", summary: "NASDAQ up as CAPEX for AI build-out reaches record highs.", sentiment: 'up' }
+          { title: "Tech AI Boom", summary: "NASDAQ up as AI chip demand reaches fever pitch.", sentiment: 'up' }
         ]);
-      } catch (error: any) {
+      } catch (error) {
         console.error("Failed to fetch news:", error);
         setNews([
           { title: "Fed Holds Rates", summary: "Market neutral as the Fed keeps rates steady to fight sticky inflation.", sentiment: 'neutral' },
-          { title: "AI Infrastructure Boom", summary: "NASDAQ up as CAPEX for AI build-out reaches record highs.", sentiment: 'up' }
+          { title: "Tech AI Boom", summary: "NASDAQ up as AI chip demand reaches fever pitch.", sentiment: 'up' }
         ]);
       } finally {
         setIsLoading(false);
