@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles, Loader2, User, Bot, ArrowLeft } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Markdown from "react-markdown";
 import { chatWithAI } from "../services/api";
 import { cn } from "../lib/utils";
@@ -10,6 +10,26 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const getErrorMessage = (error: any) => {
+  const apiError = error?.response?.data?.error;
+  const apiDetails = error?.response?.data?.details || "";
+  const message = `${apiError || ""} ${apiDetails}`.trim();
+
+  if (/credits are depleted/i.test(message)) {
+    return "The AI mentor is connected, but the Google AI Studio credits for this API key are depleted. Top up billing or swap in a funded key in Netlify.";
+  }
+
+  if (/API key/i.test(message) || /401|403|INVALID_ARGUMENT/i.test(message)) {
+    return "The AI mentor key looks invalid or unauthorized. Re-check the Netlify GEMINI_API_KEY value.";
+  }
+
+  if (apiError) {
+    return `AI mentor error: ${apiError}`;
+  }
+
+  return "My bad, something went wrong. Try again in a sec!";
+};
 
 export const AIChat = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -41,7 +61,7 @@ export const AIChat = () => {
       setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "My bad, something went wrong. Try again in a sec!" }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: getErrorMessage(error) }]);
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +137,7 @@ export const AIChat = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+            className="wfull bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
           />
           <button
             onClick={handleSend}
