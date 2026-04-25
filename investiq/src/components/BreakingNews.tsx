@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Newspaper, Sparkles, Loader2, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
-import { GoogleGenAI } from "@google/genai";
 import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
 export const BreakingNews = () => {
   const [news, setNews] = useState<{ title: string; summary: string; sentiment: 'up' | 'down' | 'neutral' }[] | null>(null);
@@ -14,30 +11,15 @@ export const BreakingNews = () => {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        const prompt = `Provide a rundown of the top 2 major market-moving news events from the last 7 days. 
-        For each event, provide:
-        1. A short, punchy title.
-        2. A 1-sentence summary of WHAT happened and WHY it triggered the market.
-        3. The overall market sentiment (up, down, or neutral).
-        
-        Format the response as a JSON array of objects with keys: title, summary, sentiment.
-        Tone: Gen-Z financial expert, direct, no fluff.`;
-
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json"
-          }
-        });
-
-        const data = JSON.parse(response.text);
-        setNews(data);
-      } catch (error) {
+        setNews([
+          { title: "Fed Holds Rates", summary: "Market neutral as the Fed keeps rates steady to fight sticky inflation.", sentiment: 'neutral' },
+          { title: "AI Infrastructure Boom", summary: "NASDAQ up as CAPEX for AI build-out reaches record highs.", sentiment: 'up' }
+        ]);
+      } catch (error: any) {
         console.error("Failed to fetch news:", error);
         setNews([
           { title: "Fed Holds Rates", summary: "Market neutral as the Fed keeps rates steady to fight sticky inflation.", sentiment: 'neutral' },
-          { title: "Tech AI Boom", summary: "NASDAQ up as AI chip demand reaches fever pitch.", sentiment: 'up' }
+          { title: "AI Infrastructure Boom", summary: "NASDAQ up as CAPEX for AI build-out reaches record highs.", sentiment: 'up' }
         ]);
       } finally {
         setIsLoading(false);
