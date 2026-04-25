@@ -1,218 +1,247 @@
 import { useState } from "react";
-import { BookOpen, CheckCircle2, ArrowRight, X, Trophy, Sparkles } from "lucide-react";
-import { LESSONS, Lesson } from "../constants";
+import { BookOpen, ArrowRight, Trophy, Sparkles, Brain, Loader2, CheckCircle2 } from "lucide-react";
+import { LESSONS } from "../constants";
 import { cn } from "../lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { useLearning } from "../context/LearningContext";
 
 export const Learning = () => {
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const { startLesson, completedLessonIds } = useLearning();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [topic, setTopic] = useState("");
 
-  const handleNext = () => {
-    if (activeLesson && currentStep < activeLesson.content.length - 1) {
-      setCurrentStep(prev => prev + 1);
-      setSelectedOption(null);
-      setIsCorrect(null);
-      setShowFeedback(false);
-    } else {
-      setActiveLesson(null);
-      setCurrentStep(0);
+  const handleGenerateLesson = async () => {
+    if (topic.length < 3) return;
+    setIsGenerating(true);
+    try {
+      const normalizedTopic = topic.trim();
+      const generatedLesson = {
+        id: `gen-${Date.now()}`,
+        title: `Mastering ${normalizedTopic}`,
+        description: `Deep dive into ${normalizedTopic} mechanics.`,
+        content: [
+          {
+            type: "info",
+            title: "Protocol Overview",
+            text: `${normalizedTopic} matters because it changes how investors understand risk, reward, and decision-making under pressure. Start by defining the core concept, where it shows up in markets, and what a beginner usually gets wrong.`
+          },
+          {
+            type: "quiz",
+            title: "Tactical Check",
+            text: "Test your understanding.",
+            question: `Which mindset is best when learning ${normalizedTopic}?`,
+            options: [
+              "Memorize random terms without context",
+              `Understand how ${normalizedTopic} affects decisions and outcomes`,
+              "Ignore practical examples"
+            ],
+            correctAnswer: `Understand how ${normalizedTopic} affects decisions and outcomes`
+          },
+          {
+            type: "info",
+            title: "Advanced Logic",
+            text: `Once you understand the basics of ${normalizedTopic}, the next step is connecting it to real market behavior, incentives, and trade-offs. Strong investors do not just know the definition — they know when the concept matters and when it does not.`
+          }
+        ]
+      };
+      startLesson(generatedLesson);
+    } catch (error) {
+      console.error("Failed to generate lesson:", error);
+      alert("Lesson generation failed. Please try a different sector.");
+    } finally {
+      setIsGenerating(false);
+      setTopic("");
     }
   };
 
-  const handleOptionSelect = (option: string) => {
-    if (showFeedback) return;
-    setSelectedOption(option);
-    const step = activeLesson?.content[currentStep];
-    if (step?.type === 'quiz') {
-      const correct = option === step.correctAnswer;
-      setIsCorrect(correct);
-      setShowFeedback(true);
-    }
-  };
+  // Find the first lesson that isn't completed to highlight it
+  const currentLessonIndex = LESSONS.findIndex(l => !completedLessonIds.includes(l.id));
+  const activeIndex = currentLessonIndex === -1 ? LESSONS.length : currentLessonIndex;
 
-  if (activeLesson) {
-    const step = activeLesson.content[currentStep];
-    const progress = ((currentStep + 1) / activeLesson.content.length) * 100;
-
-    return (
-      <div className="fixed inset-0 bg-black z-[100] flex flex-col">
-        {/* Header / Progress */}
-        <div className="p-6 flex items-center gap-4">
-          <button onClick={() => setActiveLesson(null)} className="text-zinc-500 hover:text-white transition-colors">
-            <X size={24} />
-          </button>
-          <div className="flex-1 h-3 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-            />
-          </div>
-          <div className="flex items-center gap-1 text-emerald-400 font-bold text-sm">
-            <Sparkles size={16} />
-            <span>{currentStep + 1}/{activeLesson.content.length}</span>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 max-w-xl mx-auto w-full">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="w-full space-y-8"
-            >
-              <div className="space-y-4 text-center">
-                <h2 className="text-3xl font-black tracking-tight text-white">{step.title}</h2>
-                <p className="text-zinc-400 text-lg leading-relaxed">{step.text}</p>
-              </div>
-
-              {step.type === 'quiz' && (
-                <div className="space-y-3">
-                  <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest text-center mb-4">
-                    {step.question}
-                  </p>
-                  {step.options?.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => handleOptionSelect(option)}
-                      disabled={showFeedback}
-                      className={cn(
-                        "w-full p-5 rounded-2xl border-2 text-left font-bold transition-all flex items-center justify-between group",
-                        selectedOption === option 
-                          ? isCorrect 
-                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-400" 
-                            : "bg-rose-500/20 border-rose-500 text-rose-400"
-                          : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"
-                      )}
-                    >
-                      {option}
-                      {selectedOption === option && (
-                        isCorrect ? <CheckCircle2 size={20} /> : <X size={20} />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Footer / Action */}
-        <div className={cn(
-          "p-8 border-t transition-colors duration-500",
-          showFeedback 
-            ? isCorrect ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"
-            : "bg-black border-zinc-900"
-        )}>
-          <div className="max-w-xl mx-auto flex items-center justify-between">
-            <div className="hidden sm:block">
-              {showFeedback && (
-                <p className={cn("font-black text-xl", isCorrect ? "text-emerald-400" : "text-rose-400")}>
-                  {isCorrect ? "AMAZING! 🎉" : "NOT QUITE... 🧐"}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={handleNext}
-              disabled={step.type === 'quiz' && !showFeedback}
-              className={cn(
-                "w-full sm:w-auto px-10 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all",
-                (step.type === 'info' || showFeedback)
-                  ? isCorrect === false ? "bg-rose-500 text-white" : "bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]"
-                  : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-              )}
-            >
-              {currentStep === activeLesson.content.length - 1 ? "FINISH" : "CONTINUE"}
-              <ArrowRight size={20} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const totalLessons = LESSONS.length;
+  const progressPercent = (completedLessonIds.length / totalLessons) * 100;
 
   return (
-    <div className="space-y-6 pb-20">
-      <section className="px-4 pt-8 space-y-2">
-        <h1 className="text-4xl font-black tracking-tight uppercase italic font-display">Learn</h1>
-        <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">The Path to Legend</p>
+    <div className="space-y-12 pb-32">
+      <section className="px-6 pt-12 space-y-4">
+        <h1 className="text-5xl font-black tracking-tighter uppercase italic font-display leading-none text-white">Knowledge Hub</h1>
+        <p className="text-emerald-500 text-[10px] font-black uppercase tracking-[0.4em] font-mono italic">Sector Mastery Protocols</p>
       </section>
 
-      {/* Daily Quest Card */}
-      <section className="px-4">
-        <div className="game-card bg-gradient-to-br from-emerald-500 to-emerald-600 border-emerald-400 p-6 space-y-4 text-black relative overflow-hidden shadow-[0_15px_30px_rgba(16,185,129,0.3)]">
-          <div className="absolute top-[-20%] right-[-10%] p-4 opacity-15 rotate-12">
-            <Trophy size={160} fill="black" />
+      {/* AI Lesson Generator */}
+      <section className="px-6">
+        <div className="premium-card bg-zinc-950 border-purple-500/20 p-8 space-y-8 relative overflow-hidden group">
+          <div className="absolute -top-20 -right-20 p-4 opacity-[0.03] text-purple-500 pointer-events-none group-hover:scale-110 transition-transform duration-700">
+            <Brain size={300} />
           </div>
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={20} fill="currentColor" />
-              <h3 className="text-2xl font-black tracking-tight italic uppercase">Daily Quest</h3>
+          
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-16 h-16 bg-purple-500/10 border border-purple-500/20 rounded-[1.5rem] flex items-center justify-center text-purple-400 shadow-inner">
+              <Sparkles size={32} />
             </div>
-            <p className="font-black text-xs opacity-90 uppercase tracking-tight max-w-[200px]">Finish 3 Lessons to unlock "Market Master" status!</p>
-            <div className="mt-6 space-y-2">
-              <div className="w-full h-3 bg-black/20 rounded-full overflow-hidden border border-black/10">
-                <div className="w-1/3 h-full bg-black shadow-[0_0_10px_rgba(0,0,0,0.3)] rounded-full transition-all duration-1000" />
+            <div>
+              <h3 className="text-3xl font-black italic uppercase tracking-tighter font-display text-white">Neural Synthesizer</h3>
+              <p className="text-[10px] font-black text-purple-500/60 uppercase tracking-[0.4em] font-mono">Custom Intelligence Generation</p>
+            </div>
+          </div>
+
+          <div className="relative z-10">
+            <input 
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="DESIGNATE TARGET SECTOR (E.G. OPTIONS_ARBITRAGE)"
+              className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-6 px-7 text-[11px] font-black uppercase tracking-[0.2em] focus:outline-none focus:border-purple-500/50 transition-all pr-20 font-mono placeholder:text-zinc-800 shadow-inner"
+            />
+            <button
+              onClick={handleGenerateLesson}
+              disabled={isGenerating || topic.length < 3}
+              className={cn(
+                "absolute right-3 top-1/2 -translate-y-1/2 w-14 h-14 rounded-xl flex items-center justify-center transition-all",
+                topic.length >= 3 ? "bg-purple-500 text-white shadow-2xl shadow-purple-500/40 hover:bg-purple-400" : "bg-zinc-800 text-zinc-600"
+              )}
+            >
+              {isGenerating ? <Loader2 className="animate-spin" size={24} /> : <ArrowRight size={24} strokeWidth={3} />}
+            </button>
+          </div>
+          
+          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] text-center font-mono italic relative z-10">Syncing with Deep-Learning Neural Nodes</p>
+        </div>
+      </section>
+
+      {/* Progress Card */}
+      <section className="px-6">
+        <div className="premium-card bg-gradient-to-br from-emerald-500 to-emerald-600 border-none p-10 space-y-8 text-black relative overflow-hidden shadow-[0_30px_60px_rgba(16,185,129,0.2)] group">
+          <div className="absolute top-[-30%] right-[-15%] p-4 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
+            <Trophy size={300} fill="black" />
+          </div>
+          <div className="relative z-10 space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-black/10 rounded-xl flex items-center justify-center border border-black/10">
+                   <CheckCircle2 size={24} />
+                </div>
+                <h3 className="text-4xl font-black tracking-tighter italic uppercase font-display leading-none">Operational Status</h3>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-black/60">1/3 Completed</p>
+              <p className="font-black text-[11px] opacity-60 uppercase tracking-[0.2em] max-w-sm italic font-mono">
+                {completedLessonIds.length === totalLessons 
+                  ? "Sector domination complete. You are a verified Market Legend." 
+                  : `Complete all operational modules to achieve Elite Sector status.`}
+              </p>
+            </div>
+            
+            <div className="space-y-4 pt-4">
+              <div className="w-full h-4 bg-black/10 rounded-full overflow-hidden p-1 border border-black/5">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  className="h-full bg-black rounded-full"
+                  transition={{ type: "spring", damping: 20, stiffness: 50 }}
+                />
+              </div>
+              <div className="flex justify-between items-end">
+                 <p className="text-[12px] font-black uppercase tracking-[0.4em] text-black">
+                    {completedLessonIds.length} / {totalLessons} <span className="opacity-40 italic">MOD_DEPOYED</span>
+                 </p>
+                 <p className="text-3xl font-black italic font-display">{Math.round(progressPercent)}%</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-4 space-y-10 py-6 relative">
+      <section className="px-6 space-y-16 py-12 relative overflow-hidden">
         {/* Connection Line */}
-        <div className="absolute left-10 top-0 bottom-0 w-1.5 bg-zinc-900 z-0" />
+        <div className="absolute left-[3.5rem] top-0 bottom-0 w-2.5 bg-zinc-950 shadow-inner z-0 rounded-full" />
         
-        {LESSONS.map((lesson, i) => (
-          <div key={lesson.id} className="relative z-10 flex items-start gap-6">
-            {/* Lock/Icon Circle */}
-            <div className={cn(
-              "w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-4 border-black z-10 shrink-0",
-              i === 0 ? "bg-emerald-500 text-black" : "bg-zinc-800 text-zinc-600"
-            )}>
-              {i === 0 ? <BookOpen size={20} fill="currentColor" /> : <Trophy size={20} />}
-            </div>
+        {LESSONS.map((lesson, i) => {
+          const isCompleted = completedLessonIds.includes(lesson.id);
+          const isCurrent = i === activeIndex;
+          const isLocked = i > activeIndex;
 
-            <button
-              id={i === 0 ? "first-lesson-card" : undefined}
-              onClick={() => {
-                setActiveLesson(lesson);
-                setCurrentStep(0);
-                setShowFeedback(false);
-              }}
-              className={cn(
-                "game-card flex-1 text-left group transition-all active:scale-95",
-                i === 0 ? "border-emerald-500/30" : "opacity-60 grayscale-[0.5]"
-              )}
+          return (
+            <motion.div 
+              key={lesson.id} 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative z-10 flex items-start gap-10 group"
             >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-black tracking-tight font-display italic uppercase mb-1">{lesson.title}</h3>
-                {i === 0 && <span className="bg-emerald-400 text-black px-2 py-0.5 rounded text-[8px] font-black uppercase">Active</span>}
+              {/* Status Circle */}
+              <div className={cn(
+                "w-16 h-16 rounded-[1.75rem] flex items-center justify-center shadow-2xl border-4 border-black z-10 shrink-0 transition-all duration-700 relative",
+                isCompleted ? "bg-emerald-500 text-black rotate-0" : 
+                isCurrent ? "bg-purple-600 text-white animate-pulse shadow-[0_0_30px_rgba(147,51,234,0.4)]" : 
+                "bg-zinc-900 text-zinc-700 grayscale"
+              )}>
+                {isCompleted ? <CheckCircle2 size={32} strokeWidth={3} /> : 
+                 isCurrent ? <BookOpen size={28} /> : 
+                 <Trophy size={28} />}
+                
+                {isCurrent && (
+                  <div className="absolute -inset-2 border-2 border-purple-500/50 rounded-[2rem] animate-ping" />
+                )}
               </div>
-              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">{lesson.content.length} Challenges</p>
-              
-              <div className="flex items-center justify-between">
-                 <p className="text-[10px] text-zinc-400 font-bold max-w-[150px] leading-tight line-clamp-2">
-                   {lesson.description}
-                 </p>
-                 <div className={cn(
-                   "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-inner",
-                   i === 0 ? "bg-emerald-500 text-black" : "bg-zinc-800 text-zinc-600"
-                 )}>
-                   <ArrowRight size={18} />
-                 </div>
-              </div>
-            </button>
-          </div>
-        ))}
+
+              <button
+                disabled={isLocked && !isCompleted}
+                onClick={() => startLesson(lesson)}
+                className={cn(
+                  "premium-card flex-1 text-left group transition-all relative p-10 hover:border-emerald-500/30",
+                  isCurrent ? "bg-zinc-900 border-purple-500 shadow-[0_20px_50px_rgba(147,51,234,0.1)]" : 
+                  isCompleted ? "bg-zinc-950/50 border-emerald-500/20" : 
+                  "bg-zinc-950/20 border-white/5 opacity-40 grayscale"
+                )}
+              >
+                {isCurrent && (
+                  <div className="absolute -top-4 -right-2 bg-purple-600 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] font-mono italic shadow-2xl skew-x-[-12deg]">
+                    ACTIVE MISSION
+                  </div>
+                )}
+                
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mb-8">
+                  <div className="space-y-2">
+                    <h3 className="text-3xl font-black tracking-tighter font-display italic uppercase leading-none text-white group-hover:text-emerald-400 transition-colors">
+                      {lesson.title}
+                    </h3>
+                    <div className="flex items-center gap-4">
+                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] font-mono italic">{lesson.content.length} DATA_GATES</p>
+                      {isCompleted && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-lg">
+                           <Sparkles size={10} className="text-emerald-400" />
+                           <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest font-mono">SYNCS_COMPLETE</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y8 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                   <p className="text-sm text-zinc-500 font-medium leading-relaxed max-w-md italic border-l-2 border-zinc-900 pl-4 group-hover:text-zinc-300 transition-colors">
+                     {lesson.description}
+                   </p>
+                   <div className={cn(
+                      "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-inner shrink-0 group-hover:scale-110",
+                     isCompleted ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                     isCurrent ? "bg-purple-600 text-white" : 
+                     "bg-zinc-900 text-zinc-700"
+                   )}>
+                     <ArrowRight size={24} strokeWidth={3} />
+                   </div>
+                </div>
+                
+                {isLocked && !isCompleted && (
+                   <div className="absolute inset-0 bg-black/60 rounded-[3rem] flex items-center justify-center backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-500">
+                      <div className="px-6 py-3 bg-black/80 border border-white/5 rounded-full flex items-center gap-3">
+                        <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 font-mono italic">Sector Encrypted</p>
+                      </div>
+                   </div>
+                )}
+              </button>
+            </motion.div>
+          );
+        })}
       </section>
     </div>
   );
