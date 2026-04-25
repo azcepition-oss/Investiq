@@ -41,11 +41,12 @@ export const fetchMarketData = (ticker = "AAPL") => ({
 
 export const createModel = (key, systemInstruction) => {
   const genAI = new GoogleGenerativeAI(key);
+  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash";
+
   return genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model,
     ...(systemInstruction ? { systemInstruction } : {}),
   });
 };
 
 export { SchemaType };
-
